@@ -1,23 +1,23 @@
 import React, { Component } from 'react';
 import Table from 'react-bootstrap/Table';
 import Button from 'react-bootstrap/Button';
-import Form from 'react-bootstrap/Form';
 import Axios from "axios";
-
+import Form from 'react-bootstrap/Form';
+import { Link } from "react-router-dom";
 /*
 const submitTest = ()=>{
-  // react -> 서버 요청을 보내고, 그 결과를 출력
+  //react->서버 요청을 보내고, 그 결과를 출력
   Axios.get('http://localhost:8000/')
   .then(function (response) {
-    alert('등록 완료');
-    // 성공 핸들링
+    alert('등록 완료!');
     console.log(response);
   })
   .catch(function (error) {
     // 에러 핸들링
     console.log(error);
-  })
-}*/
+  });
+}
+*/
 class Board extends Component {
   render() {
     return (
@@ -33,7 +33,7 @@ class Board extends Component {
           />
         </td>
         <td>{this.props.id}</td>
-        <td>{this.props.title}</td>
+        <td><Link to={`/view?id=${this.props.id}`}>{this.props.title}</Link> </td>
         <td>{this.props.registerId}</td>
         <td>{this.props.date}</td>
       </tr>
@@ -41,13 +41,13 @@ class Board extends Component {
   }
 }
 
-
 export default class BoardList extends Component {
   state = {
     BoardList:[],
     checkList:[]
   }
-  onCheckboxChange = (checked, id)=>{
+
+  onCheckboxChange = (checked, id) =>{
     const list = [...this.state.checkList];
     if(checked){
       if(!list.includes(id)){
@@ -55,69 +55,105 @@ export default class BoardList extends Component {
       }
     } else{
       let idx = list.indexOf(id);
-      list.splice(idx , 1);
+      list.splice(idx, 1)
     }
-
     this.setState({
       checkList:list
-    })
+    });
     console.log(this.state.checkList);
   }
+
   getList = ()=>{
     Axios.get('http://localhost:8000/list')
-    .then( (res) => {
+    .then((res) => {
+      //const data = res.data;  
       const {data} = res;  //destructuring 비구조할당
-      console.log(data);
       this.setState({
         BoardList:data
-      })
+      });
       this.props.renderComplete(); //App.js에 목록 출력이 완료되었다고 전달
     })
-    .catch( (err)=> {
-    // 에러 핸들링
-      console.log(err);
-    });
+    .catch((e)=> {
+      // 에러 핸들링
+      console.log(e);
+    });  
   }
   componentDidMount(){
-    this.getList();
+    this.getList(); 
   }
-  render() {
+  componentDidUpdate(prevProps) {
+    // 수정모드이고 boardId가 변경되었다면, 그 글의 내용조회(detail 함수) 실행
+    if (this.props.isComplete !== prevProps.isComplete) {
+      this.getList(); 
+    }
+  }
+  handleDelete = ()=>{
+    if(this.state.checkList.length === 0){
+      alert('삭제할 게시글을 선택하세요');
+      return;      
+    }    
+    /*
+    let boardIDList = '';
+    this.state.checkList.forEach(num=>{
+      boardIDList = boardIDList + `${num},`;
+      console.log(boardIDList); // 1,2,3,
+    })
+    */
+    let boardIDList = this.state.checkList.join(); //1,2,3
+ 
+      Axios.post('http://localhost:8000/delete',{
+        boardIDList
+      })
+      .then((res) => {
+        this.getList();
+      })
+      .catch((e)=> {
+        // 에러 핸들링
+        console.log(e);
+      });    
+  }
 
+  render() {
+    console.log(this.props);
+    console.log(this.state.BoardList);
     return (
       <>
-      <Table striped bordered hover>
-        <thead>
-          <tr>
-            <th>선택</th>
-            <th>번호</th>
-            <th>제목</th>
-            <th>작성자</th>
-            <th>작성일</th>
-          </tr>
-        </thead>
-        <tbody>
-          {
-            this.state.BoardList.map(
-              item=> <Board 
-              key={item.BOARD_ID} 
-              title={item.BOARD_TITLE} 
-              id={item.BOARD_ID} 
-              registerId={item.REGISTER_ID} 
-              date={item.REGISTER_DATE} 
-              onCheckboxChange={this.onCheckboxChange}
-              />
-            )
-          }
+        <Table striped bordered hover>
+          <thead>
+            <tr>
+              <th>선택</th>
+              <th>번호</th>
+              <th>제목</th>
+              <th>작성자</th>
+              <th>작성일</th>
+            </tr>
+          </thead>
+          <tbody>
+           {
+              this.state.BoardList.map(
+                item=><Board 
+                  key={item.BOARD_ID} 
+                  id={item.BOARD_ID} 
+                  title={item.BOARD_TITLE} 
+                  registerId={item.REGISTER_ID} 
+                  date={item.REGISTER_DATE}
+                  onCheckboxChange={this.onCheckboxChange}
+                />
+              )
+           }          
+          </tbody>
+        </Table>
+        <div className="d-flex gap-1">
+
+          <Link to="/write" className="btn btn-primary">
+           글쓰기
+          </Link>
           
-        </tbody>
-      </Table>
-      <div className="d-flex gap-1">
-        <Button variant="primary" >글쓰기</Button>
-        <Button variant="secondary" onClick={()=>{
-          this.props.handelModify(this.state.checkList);
-        }}>수정하기</Button>
-        <Button variant="danger">삭제하기</Button>
-      </div>
+          <Button variant="secondary" onClick={()=>{
+            this.props.handleModify(this.state.checkList);
+          }}>수정하기</Button>
+          <Button variant="danger" onClick={this.handleDelete}>삭제하기</Button>
+        </div>      
       </>
     )
   }
